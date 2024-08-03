@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube to MP4 Converter</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>YouTube to MP4 Converter</h1>
+        <p class="subtitle">Convert and download YouTube videos with ease</p>
+    </header>
+
+    <div class="container">
+        <div class="converter-form">
+            <form id="converter-form">
+                <div class="input-group">
+                    <label for="youtube-url">YouTube Video URL:</label>
+                    <input type="url" id="youtube-url" name="youtube-url" required placeholder="https://www.youtube.com/watch?v=...">
+                </div>
+                <button type="submit" class="btn">Convert</button>
+            </form>
+        </div>
+
+        <div class="result">
+            <div class="loader" id="loader"></div>
+            <div id="error-message" class="error-message"></div>
+            <div id="video-info" class="video-info" style="display: none;">
+                <img id="thumbnail" src="" alt="Video Thumbnail">
+                <h2 id="video-title"></h2>
+                <p id="video-duration"></p>
+                <div class="download-options">
+                    <button class="btn download-btn" data-quality="360p">Download 360p</button>
+                    <button class="btn download-btn" data-quality="720p">Download 720p</button>
+                    <button class="btn download-btn" data-quality="1080p">Download 1080p</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="recent-conversions">
+            <h3>Recent Conversions</h3>
+            <ul id="recent-conversions"></ul>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 YouTube to MP4 Converter. All rights reserved.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
