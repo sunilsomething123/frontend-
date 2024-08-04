@@ -12,6 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const videoDuration = document.getElementById('video-duration');
     const downloadButtons = document.querySelectorAll('.download-btn');
 
+    let player;
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const youtubeUrl = document.getElementById('youtube-url').value;
@@ -44,8 +46,11 @@ document.addEventListener('DOMContentLoaded', () => {
             showLoader();
             try {
                 const result = await downloadVideo(youtubeUrl, quality);
+                if (result.filename) {
+                    const downloadLink = `${API_BASE_URL}/download-file/${result.filename}`;
+                    window.open(downloadLink, '_blank');
+                }
                 showNotification(`Download started for ${quality} version. Filename: ${result.filename}`, 'success');
-                // You might want to add logic here to handle the downloaded file
             } catch (error) {
                 showError('Failed to start download');
             } finally {
@@ -101,10 +106,62 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function displayVideoInfo(videoData) {
-        thumbnail.src = videoData.thumbnail;
-        videoTitle.textContent = videoData.title;
-        videoDuration.textContent = `Duration: ${formatDuration(videoData.duration)}`;
-        videoInfo.style.display = 'block';
+    thumbnail.src = videoData.thumbnail;
+    videoTitle.textContent = videoData.title;
+    videoDuration.textContent = `Duration: ${formatDuration(videoData.duration)}`;
+    const videoId = extractVideoId(document.getElementById('youtube-url').value);
+    if (videoId) {
+        createVideoPreview(videoId);
+    }
+    videoInfo.style.display = 'block';
+
+    // Add click event to thumbnail to play/pause video
+    thumbnail.addEventListener('click', toggleVideoPlay);
+}
+
+function createVideoPreview(videoId) {
+    if (player) {
+        player.loadVideoById(videoId);
+    } else {
+        player = new YT.Player('video-preview', {
+            height: '100%',
+            width: '100%',
+            videoId: videoId,
+            playerVars: {
+                'autoplay': 0,
+                'controls': 1,
+                'modestbranding': 1,
+                'rel': 0
+            },
+            events: {
+                'onReady': onPlayerReady
+            }
+        });
+    }
+}
+
+function onPlayerReady(event) {
+    // The video is ready to play
+    thumbnail.classList.add('hide');
+}
+
+function toggleVideoPlay() {
+    if (player && typeof player.getPlayerState === 'function') {
+        if (player.getPlayerState() === YT.PlayerState.PLAYING) {
+            player.pauseVideo();
+            thumbnail.classList.remove('hide');
+        } else {
+            player.playVideo();
+            thumbnail.classList.add('hide');
+        }
+    }
+}
+              
+
+    function extractVideoId(url) {
+        const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[7].length == 11) ? match[7] : false;
     }
 
     async function downloadVideo(url, quality) {
@@ -119,52 +176,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!response.ok) {
                 throw new Error('Failed to download video');
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('Error:', error);
-            throw error;
-        }
-    }
-
-    async function convertToMp3(filename) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/convert-to-mp3`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ filename: filename }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to convert video to MP3');
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('Error:', error);
-            throw error;
-        }
-    }
-
-    function downloadFile(filename) {
-        window.location.href = `${API_BASE_URL}/download-file/${filename}`;
-    }
-
-    async function deleteFile(filename) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/delete-file`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ filename: filename }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to delete file');
             }
 
             return await response.json();
@@ -219,16 +230,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 
-    function formatDuration(seconds) {
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
-        const remainingSeconds = seconds % 60;
+    function formatDuration(iso8601Duration) {
+        const match = iso8601Duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+        
+        const hours = (parseInt(match[1]) || 0);
+        const minutes = (parseInt(match[2]) || 0);
+        const seconds = (parseInt(match[3]) || 0);
 
         let formattedDuration = '';
         if (hours > 0) {
             formattedDuration += `${hours}:`;
         }
-        formattedDuration += `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+        formattedDuration += `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         return formattedDuration;
     }
 
@@ -238,7 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Check browser support
     function checkBrowserSupport() {
         const requiredFeatures = {
-            'Fetch API': 'fetch' in window,
+          'Fetch API': 'fetch' in window,
             'Promise': 'Promise' in window,
             'localStorage': 'localStorage' in window,
             'Flexbox': CSS.supports('display', 'flex')
@@ -268,4 +281,3 @@ document.addEventListener('DOMContentLoaded', () => {
         showNotification('You are offline. Please check your internet connection.', 'error');
     });
 });
-                
