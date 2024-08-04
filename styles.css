@@ -1,10 +1,23 @@
+body {
+  font-family: 'League Spartan', sans-serif;
+}
+
+/* Example: Applying to specific elements */
+h1, h2, h3, p {
+  font-family: 'League Spartan', sans-serif;
+}
+h1, h2, h3, p, button, div {
+      font-family: 'League Spartan', sans-serif;
+}
+
 :root {
     --primary-color: #ffffff;
     --secondary-color: #000000;
     --accent-color: #4a4a4a;
     --background-color: #f5f5f5;
     --text-color: #333333;
-}
+    --hover-color: #FF0000;
+
 
 * {
     margin: 0;
@@ -13,7 +26,7 @@
 }
 
 body {
-    font-family: 'Arial', sans-serif;
+    font-family: 'Source Sans Pro', sans-serif;
     background-color: var(--background-color);
     color: var(--text-color);
     line-height: 1.6;
@@ -31,6 +44,14 @@ header {
     text-align: center;
     padding: 40px 0;
     margin-bottom: 30px;
+    position: relative;
+    overflow: hidden;
+}
+
+.logo-container {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 20px;
 }
 
 h1 {
@@ -41,7 +62,7 @@ h1 {
 
 .subtitle {
     font-size: 1.2rem;
-    font-weight: 300;
+    font-weight: 400;
     opacity: 0.8;
 }
 
@@ -49,8 +70,13 @@ h1 {
     background-color: var(--primary-color);
     border-radius: 8px;
     padding: 30px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
     margin-bottom: 30px;
+    transition: transform 0.3s ease;
+}
+
+.converter-form:hover {
+    transform: translateY(-5px);
 }
 
 .input-group {
@@ -61,9 +87,15 @@ h1 {
 input[type="url"] {
     flex-grow: 1;
     padding: 12px;
-    border: 1px solid #ddd;
+    border: 2px solid #ddd;
     border-radius: 4px;
     font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+input[type="url"]:focus {
+    border-color: var(--hover-color);
+    outline: none;
 }
 
 .btn {
@@ -74,11 +106,48 @@ input[type="url"] {
     border-radius: 4px;
     font-size: 1rem;
     cursor: pointer;
-    transition: background-color 0.3s ease;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    background: #000000
+    opacity: 0;
+    border-radius: 100%;
+    transform: scale(1, 1) translate(-50%);
+    transform-origin: 50% 50%;
+}
+
+@keyframes ripple {
+    0% {
+        transform: scale(0, 0);
+        opacity: 1;
+    }
+    20% {
+        transform: scale(25, 25);
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: scale(40, 40);
+    }
+}
+
+.btn:focus:not(:active)::after {
+    animation: ripple 1s ease-out;
 }
 
 .btn:hover {
-    background-color: var(--accent-color);
+    background-color: var(--hover-color);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 10p
 }
 
 .result {
@@ -90,7 +159,12 @@ input[type="url"] {
     border-radius: 8px;
     padding: 30px;
     margin-bottom: 30px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.video-info:hover {
+    transform: translateY(-5px);
 }
 
 .video-preview-container {
@@ -98,6 +172,9 @@ input[type="url"] {
     width: 100%;
     padding-bottom: 56.25%; /* 16:9 aspect ratio */
     margin-bottom: 20px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
 #video-preview, #thumbnail {
@@ -106,13 +183,17 @@ input[type="url"] {
     left: 0;
     width: 100%;
     height: 100%;
-    border-radius: 8px;
     object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.video-preview-container:hover #thumbnail {
+    transform: scale(1.05);
 }
 
 #thumbnail {
     z-index: 1;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 #thumbnail.hide {
@@ -143,7 +224,7 @@ input[type="url"] {
 }
 
 .download-btn:hover {
-    background-color: var(--secondary-color);
+    background-color: var(--hover-color);
 }
 
 .error-message {
@@ -153,26 +234,22 @@ input[type="url"] {
 }
 
 .loader {
-    border: 5px solid var(--background-color);
-    border-top: 5px solid var(--secondary-color);
-    border-radius: 50%;
     width: 50px;
     height: 50px;
-    animation: spin 1s linear infinite;
     margin: 20px auto;
     display: none;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
 }
 
 .recent-conversions {
     background-color: var(--primary-color);
     border-radius: 8px;
     padding: 20px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.recent-conversions:hover {
+    transform: translateY(-5px);
 }
 
 .recent-conversions h3 {
@@ -188,7 +265,7 @@ input[type="url"] {
     cursor: pointer;
     padding: 10px 0;
     border-bottom: 1px solid #eee;
-    transition: color 0.3s ease;
+    transition: all 0.3s ease;
 }
 
 .recent-conversions li:last-child {
@@ -196,7 +273,8 @@ input[type="url"] {
 }
 
 .recent-conversions li:hover {
-    color: var(--accent-color);
+    color: var(--hover-color);
+    transform: translateX(5px);
 }
 
 footer {
@@ -216,11 +294,13 @@ footer {
     color: var(--primary-color);
     font-weight: bold;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: all 0.3s ease;
+    transform: translateY(-20px);
 }
 
 .notification.show {
     opacity: 1;
+    transform: translateY(0);
 }
 
 .notification.success {
@@ -259,4 +339,4 @@ footer {
     .btn {
         width: 100%;
     }
-        }
+    }
