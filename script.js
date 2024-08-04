@@ -81,12 +81,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchVideoInfo(url) {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/video-info`, {
+            const response = await fetch(`${API_BASE_URL}/video-info`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ url }),
+                body: JSON.stringify({ url: url }),
             });
 
             if (!response.ok) {
@@ -107,28 +107,21 @@ document.addEventListener('DOMContentLoaded', () => {
         videoInfo.style.display = 'block';
     }
 
-    async function downloadVideo(url, quality = '720p') {
+    async function downloadVideo(url, quality) {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/download`, {
+            const response = await fetch(`${API_BASE_URL}/download`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ url, quality }),
+                body: JSON.stringify({ url: url, quality: quality }),
             });
 
             if (!response.ok) {
                 throw new Error('Failed to download video');
             }
 
-            const data = await response.json();
-            console.log('Download Info:', data);
-            // Display video duration and 30-second preview
-            document.getElementById('videoDuration').textContent = `Duration: ${data.duration} seconds`;
-            const previewElement = document.getElementById('videoPreview');
-            previewElement.src = `${API_BASE_URL}/api/download-file/${data.preview}`;
-            previewElement.load();
-            previewElement.play();
+            return await response.json();
         } catch (error) {
             console.error('Error:', error);
             throw error;
@@ -142,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ filename }),
+                body: JSON.stringify({ filename: filename }),
             });
 
             if (!response.ok) {
@@ -157,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function downloadFile(filename) {
-        window.location.href = `${API_BASE_URL}/api/download-file/${filename}`;
+        window.location.href = `${API_BASE_URL}/download-file/${filename}`;
     }
 
     async function deleteFile(filename) {
@@ -167,7 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ filename }),
+                body: JSON.stringify({ filename: filename }),
             });
 
             if (!response.ok) {
@@ -275,3 +268,4 @@ document.addEventListener('DOMContentLoaded', () => {
         showNotification('You are offline. Please check your internet connection.', 'error');
     });
 });
+                
