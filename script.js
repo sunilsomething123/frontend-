@@ -1,4 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const API_BASE_URL = 'https://you2-mp4-snzg.onrender.com/api';
+    // For local development, you might use:
+    // const API_BASE_URL = 'http://localhost:8000/api';
+
     const form = document.getElementById('converter-form');
     const loader = document.getElementById('loader');
     const errorMessage = document.getElementById('error-message');
@@ -33,10 +37,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     downloadButtons.forEach(button => {
-        button.addEventListener('click', () => {
+        button.addEventListener('click', async () => {
             const quality = button.dataset.quality;
             const youtubeUrl = document.getElementById('youtube-url').value;
-            downloadVideo(youtubeUrl, quality);
+            
+            showLoader();
+            try {
+                const result = await downloadVideo(youtubeUrl, quality);
+                showNotification(`Download started for ${quality} version. Filename: ${result.filename}`, 'success');
+                // You might want to add logic here to handle the downloaded file
+            } catch (error) {
+                showError('Failed to start download');
+            } finally {
+                hideLoader();
+            }
         });
     });
 
@@ -66,30 +80,98 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchVideoInfo(url) {
-        // This is a mock function. In a real application, you would make an API call to your backend.
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                resolve({
-                    title: 'Sample YouTube Video',
-                    duration: '10:30',
-                    thumbnail: 'https://via.placeholder.com/480x360.png?text=Video+Thumbnail',
-                    url: url
-                });
-            }, 1500);
-        });
+        try {
+            const response = await fetch(`${API_BASE_URL}/video-info`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ url: url }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch video information');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error:', error);
+            throw error;
+        }
     }
 
     function displayVideoInfo(videoData) {
         thumbnail.src = videoData.thumbnail;
         videoTitle.textContent = videoData.title;
-        videoDuration.textContent = `Duration: ${videoData.duration}`;
+        videoDuration.textContent = `Duration: ${formatDuration(videoData.duration)}`;
         videoInfo.style.display = 'block';
     }
 
-    function downloadVideo(url, quality) {
-        // This is a mock function. In a real application, you would make an API call to your backend.
-        console.log(`Downloading video: ${url} at ${quality}`);
-        showNotification(`Download started for ${quality} version`, 'success');
+    async function downloadVideo(url, quality) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/download`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ url: url, quality: quality }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to download video');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error:', error);
+            throw error;
+        }
+    }
+
+    async function convertToMp3(filename) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/convert-to-mp3`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ filename: filename }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to convert video to MP3');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error:', error);
+            throw error;
+        }
+    }
+
+    function downloadFile(filename) {
+        window.location.href = `${API_BASE_URL}/download-file/${filename}`;
+    }
+
+    async function deleteFile(filename) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/delete-file`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ filename: filename }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to delete file');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error:', error);
+            throw error;
+        }
     }
 
     function addRecentConversion(videoData) {
@@ -137,14 +219,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 
-    window.addEventListener('online', () => {
-        showNotification('You are back online!', 'success');
-    });
+    function formatDuration(seconds) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const remainingSeconds = seconds % 60;
 
-    window.addEventListener('offline', () => {
-        showNotification('You are offline. Please check your internet connection.', 'error');
-    });
+        let formattedDuration = '';
+        if (hours > 0) {
+            formattedDuration += `${hours}:`;
+        }
+        formattedDuration += `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+        return formattedDuration;
+    }
 
+    // Initialize the application
+    updateRecentConversionsList();
+
+    // Check browser support
     function checkBrowserSupport() {
         const requiredFeatures = {
             'Fetch API': 'fetch' in window,
@@ -166,7 +257,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Initialize the application
-    updateRecentConversionsList();
     checkBrowserSupport();
+
+    // Online/Offline status
+    window.addEventListener('online', () => {
+        showNotification('You are back online!', 'success');
+    });
+
+    window.addEventListener('offline', () => {
+        showNotification('You are offline. Please check your internet connection.', 'error');
+    });
 });
