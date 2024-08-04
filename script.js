@@ -11,6 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const videoTitle = document.getElementById('video-title');
     const videoDuration = document.getElementById('video-duration');
     const downloadButtons = document.querySelectorAll('.download-btn');
+    const qualitySelect = document.getElementById('quality-select');
+    const progressBar = document.getElementById('progress-bar');
+    const progress = document.getElementById('progress');
 
     let player;
 
@@ -40,21 +43,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     downloadButtons.forEach(button => {
         button.addEventListener('click', async () => {
-            const quality = button.dataset.quality;
+            const quality = button.dataset.quality || qualitySelect.value;
             const youtubeUrl = document.getElementById('youtube-url').value;
             
             showLoader();
+            showProgressBar();
+
             try {
                 const result = await downloadVideo(youtubeUrl, quality);
                 if (result.filename) {
                     const downloadLink = `${API_BASE_URL}/download-file/${result.filename}`;
                     window.open(downloadLink, '_blank');
+                    updateProgress(100);
+                    showNotification(`Download started for ${quality} version. Filename: ${result.filename}`, 'success');
                 }
-                showNotification(`Download started for ${quality} version. Filename: ${result.filename}`, 'success');
             } catch (error) {
                 showError('Failed to start download');
             } finally {
                 hideLoader();
+                hideProgressBar();
             }
         });
     });
@@ -84,6 +91,19 @@ document.addEventListener('DOMContentLoaded', () => {
         videoInfo.style.display = 'none';
     }
 
+    function showProgressBar() {
+        progressBar.style.display = 'block';
+        updateProgress(0);
+    }
+
+    function hideProgressBar() {
+        progressBar.style.display = 'none';
+    }
+
+    function updateProgress(percent) {
+        progress.style.width = `${percent}%`;
+    }
+
     async function fetchVideoInfo(url) {
         try {
             const response = await fetch(`${API_BASE_URL}/video-info`, {
@@ -106,57 +126,57 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function displayVideoInfo(videoData) {
-    thumbnail.src = videoData.thumbnail;
-    videoTitle.textContent = videoData.title;
-    videoDuration.textContent = `Duration: ${formatDuration(videoData.duration)}`;
-    const videoId = extractVideoId(document.getElementById('youtube-url').value);
-    if (videoId) {
-        createVideoPreview(videoId);
+        thumbnail.src = videoData.thumbnail;
+        videoTitle.textContent = videoData.title;
+        videoDuration.textContent = `Duration: ${formatDuration(videoData.duration)}`;
+        populateQualityOptions(videoData.available_qualities);
+        const videoId = extractVideoId(document.getElementById('youtube-url').value);
+        if (videoId) {
+            createVideoPreview(videoId);
+        }
+        videoInfo.style.display = 'block';
+
+        // Add click event to thumbnail to play/pause video
+        thumbnail.addEventListener('click', toggleVideoPlay);
     }
-    videoInfo.style.display = 'block';
 
-    // Add click event to thumbnail to play/pause video
-    thumbnail.addEventListener('click', toggleVideoPlay);
-}
-
-function createVideoPreview(videoId) {
-    if (player) {
-        player.loadVideoById(videoId);
-    } else {
-        player = new YT.Player('video-preview', {
-            height: '100%',
-            width: '100%',
-            videoId: videoId,
-            playerVars: {
-                'autoplay': 0,
-                'controls': 1,
-                'modestbranding': 1,
-                'rel': 0
-            },
-            events: {
-                'onReady': onPlayerReady
-            }
-        });
-    }
-}
-
-function onPlayerReady(event) {
-    // The video is ready to play
-    thumbnail.classList.add('hide');
-}
-
-function toggleVideoPlay() {
-    if (player && typeof player.getPlayerState === 'function') {
-        if (player.getPlayerState() === YT.PlayerState.PLAYING) {
-            player.pauseVideo();
-            thumbnail.classList.remove('hide');
+    function createVideoPreview(videoId) {
+        if (player) {
+            player.loadVideoById(videoId);
         } else {
-            player.playVideo();
-            thumbnail.classList.add('hide');
+            player = new YT.Player('video-preview', {
+                height: '100%',
+                width: '100%',
+                videoId: videoId,
+                playerVars: {
+                    'autoplay': 0,
+                    'controls': 1,
+                    'modestbranding': 1,
+                    'rel': 0
+                },
+                events: {
+                    'onReady': onPlayerReady
+                }
+            });
         }
     }
-}
-              
+
+    function onPlayerReady(event) {
+        // The video is ready to play
+        thumbnail.classList.add('hide');
+    }
+
+    function toggleVideoPlay() {
+        if (player && typeof player.getPlayerState === 'function') {
+            if (player.getPlayerState() === YT.PlayerState.PLAYING) {
+                player.pauseVideo();
+                thumbnail.classList.remove('hide');
+            } else {
+                player.playVideo();
+                thumbnail.classList.add('hide');
+            }
+        }
+    }
 
     function extractVideoId(url) {
         const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
@@ -178,11 +198,48 @@ function toggleVideoPlay() {
                 throw new Error('Failed to download video');
             }
 
+            const reader = response.body.getReader();
+            const contentLength = +response.headers.get('Content-Length');
+            let receivedLength = 0;
+            let chunks = [];
+            
+            while(true) {
+                const {done, value} = await reader.read();
+                
+                if (done) {
+                    break;
+                }
+                
+                chunks.push(value);
+                receivedLength += value.length;
+                
+                updateProgress(Math.floor((receivedLength / contentLength) * 100));
+            }
+
+            const blob = new Blob(chunks);
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `${url}-${quality}.mp4`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            
             return await response.json();
         } catch (error) {
             console.error('Error:', error);
             throw error;
         }
+    }
+
+    function populateQualityOptions(qualities) {
+        qualitySelect.innerHTML = '<option value="highest">Best Quality</option>';
+        qualities.forEach(quality => {
+            const option = document.createElement('option');
+            option.value = quality;
+            option.textContent = quality;
+            qualitySelect.appendChild(option);
+        });
     }
 
     function addRecentConversion(videoData) {
@@ -237,15 +294,9 @@ function toggleVideoPlay() {
         const minutes = (parseInt(match[2]) || 0);
         const seconds = (parseInt(match[3]) || 0);
 
-        let formattedDuration = '';
-        if (hours > 0) {
-            formattedDuration += `${hours}:`;
-        }
-        formattedDuration += `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        return formattedDuration;
+        return `${hours > 0 ? hours + ':' : ''}${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
 
-    // Initialize the application
     updateRecentConversionsList();
 
     // Check browser support
