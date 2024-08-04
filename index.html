@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube to MP4 Converter</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://www.youtube.com/iframe_api"></script>
 </head>
 <body>
     <header>
@@ -16,10 +17,9 @@
         <div class="converter-form">
             <form id="converter-form">
                 <div class="input-group">
-                    <label for="youtube-url">YouTube Video URL:</label>
-                    <input type="url" id="youtube-url" name="youtube-url" required placeholder="https://www.youtube.com/watch?v=...">
+                    <input type="url" id="youtube-url" name="youtube-url" required placeholder="Enter YouTube URL">
+                    <button type="submit" class="btn">Convert</button>
                 </div>
-                <button type="submit" class="btn">Convert</button>
             </form>
         </div>
 
@@ -27,7 +27,10 @@
             <div class="loader" id="loader"></div>
             <div id="error-message" class="error-message"></div>
             <div id="video-info" class="video-info" style="display: none;">
-                <img id="thumbnail" src="" alt="Video Thumbnail">
+                <div class="video-preview-container">
+                    <div id="video-preview"></div>
+                    <img id="thumbnail" src="" alt="Video Thumbnail">
+                </div>
                 <h2 id="video-title"></h2>
                 <p id="video-duration"></p>
                 <div class="download-options">
