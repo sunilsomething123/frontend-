@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = 'https://you2-mp4-snzg.onrender.com/api';
     // For local development, you might use:
     // const API_BASE_URL = 'http://localhost:8000/api';
+
     const form = document.getElementById('converter-form');
     const loader = document.getElementById('loader');
     const errorMessage = document.getElementById('error-message');
@@ -9,9 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const thumbnail = document.getElementById('thumbnail');
     const videoTitle = document.getElementById('video-title');
     const videoDuration = document.getElementById('video-duration');
-    const downloadButtons = document.querySelectorAll('.download-btn');
-
-    let player;
+    const formatSelector = document.getElementById('format-selector');
+    const downloadButton = document.getElementById('download-button');
+    const convertToMp3Button = document.getElementById('convert-to-mp3');
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -29,7 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const videoData = await fetchVideoInfo(youtubeUrl);
             displayVideoInfo(videoData);
-            addRecentConversion(videoData);
+            populateFormatSelector(videoData.formats);
+            addRecentConversion(videoData.videoDetails);
         } catch (error) {
             showError('An error occurred while fetching video information');
         } finally {
@@ -37,25 +39,38 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    downloadButtons.forEach(button => {
-        button.addEventListener('click', async () => {
-            const quality = button.dataset.quality;
-            const youtubeUrl = document.getElementById('youtube-url').value;
+    downloadButton.addEventListener('click', async () => {
+        const youtubeUrl = document.getElementById('youtube-url').value;
+        const selectedFormat = formatSelector.value;
+        
+        if (!selectedFormat) {
+            showError('Please select a format');
+            return;
+        }
 
-            showLoader();
-            try {
-                const result = await downloadVideo(youtubeUrl, quality);
-                if (result.filename) {
-                    const fileData = await fetchFileData(result.filename);
-                    await saveFile(result.filename, fileData);
-                }
-                showNotification(`Download started for ${quality} version. Filename: ${result.filename}`, 'success');
-            } catch (error) {
-                showError('Failed to start download');
-            } finally {
-                hideLoader();
-            }
-        });
+        showLoader();
+        try {
+            await downloadVideo(youtubeUrl, selectedFormat);
+        } catch (error) {
+            showError('Failed to start download');
+        } finally {
+            hideLoader();
+        }
+    });
+
+    convertToMp3Button.addEventListener('click', async () => {
+        const youtubeUrl = document.getElementById('youtube-url').value;
+        
+        showLoader();
+        try {
+            const result = await convertToMp3(youtubeUrl);
+            showNotification(`MP3 conversion complete. Filename: ${result.filename}`, 'success');
+            downloadFile(result.filename);
+        } catch (error) {
+            showError('Failed to convert to MP3');
+        } finally {
+            hideLoader();
+        }
     });
 
     function isValidYouTubeUrl(url) {
@@ -105,110 +120,40 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function displayVideoInfo(videoData) {
-        thumbnail.src = videoData.thumbnail;
-        videoTitle.textContent = videoData.title;
-        videoDuration.textContent = `Duration: ${formatDuration(videoData.duration)}`;
-        const videoId = extractVideoId(document.getElementById('youtube-url').value);
-        if (videoId) {
-            createVideoPreview(videoId);
-        }
+        const details = videoData.videoDetails;
+        thumbnail.src = details.thumbnails[0];
+        videoTitle.textContent = details.title;
+        videoDuration.textContent = `Duration: ${formatDuration(details.lengthSeconds)}`;
         videoInfo.style.display = 'block';
-
-        // Add click event to thumbnail to play/pause video
-        thumbnail.addEventListener('click', toggleVideoPlay);
     }
 
-    function createVideoPreview(videoId) {
-        if (player) {
-            player.loadVideoById(videoId);
-        } else {
-            player = new YT.Player('video-preview', {
-                height: '100%',
-                width: '100%',
-                videoId: videoId,
-                playerVars: {
-                    'autoplay': 0,
-                    'controls': 1,
-                    'modestbranding': 1,
-                    'rel': 0
-                },
-                events: {
-                    'onReady': onPlayerReady
-                }
-            });
-        }
+    function populateFormatSelector(formats) {
+        formatSelector.innerHTML = '';
+        formats.forEach(format => {
+            const option = document.createElement('option');
+            option.value = format.itag;
+            option.textContent = `${format.qualityLabel} - ${format.mimeType}`;
+            formatSelector.appendChild(option);
+        });
     }
 
-    function onPlayerReady(event) {
-        // The video is ready to play
-        thumbnail.classList.add('hide');
+    async function downloadVideo(url, itag) {
+        const downloadUrl = `${API_BASE_URL}/download?url=${encodeURIComponent(url)}&itag=${itag}`;
+        window.location.href = downloadUrl;
     }
 
-    function toggleVideoPlay() {
-        if (player && typeof player.getPlayerState === 'function') {
-            if (player.getPlayerState() === YT.PlayerState.PLAYING) {
-                player.pauseVideo();
-                thumbnail.classList.remove('hide');
-            } else {
-                player.playVideo();
-                thumbnail.classList.add('hide');
-            }
-        }
-    }
-
-    function extractVideoId(url) {
-        const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
-        const match = url.match(regExp);
-        return (match && match[7].length == 11) ? match[7] : false;
-    }
-
-    async function fetchFileData(filename) {
+    async function convertToMp3(url) {
         try {
-            const response = await fetch(`${API_BASE_URL}/download-file/${filename}`);
-            if (!response.ok) {
-                throw new Error('Failed to fetch file data');
-            }
-            return await response.blob();
-        } catch (error) {
-            console.error('Error:', error);
-            throw error;
-        }
-    }
-
-    async function saveFile(filename, fileData) {
-        try {
-            const handle = await window.showSaveFilePicker({
-                suggestedName: filename,
-                types: [{
-                    description: 'MP4 Files',
-                    accept: {
-                        'video/mp4': ['.mp4']
-                    }
-                }]
-            });
-
-            const writable = await handle.createWritable();
-            await writable.write(fileData);
-            await writable.close();
-
-            console.log('File saved successfully!');
-        } catch (error) {
-            console.error('Error saving file:', error);
-        }
-    }
-
-    async function downloadVideo(url, quality) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/download`, {
+            const response = await fetch(`${API_BASE_URL}/convert-to-mp3`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ url: url, quality: quality }),
+                body: JSON.stringify({ url: url }),
             });
 
             if (!response.ok) {
-                throw new Error('Failed to download video');
+                throw new Error('Failed to convert video to MP3');
             }
 
             return await response.json();
@@ -218,9 +163,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function addRecentConversion(videoData) {
+    function downloadFile(filename) {
+        window.location.href = `${API_BASE_URL}/download-file/${filename}`;
+    }
+
+    function addRecentConversion(videoDetails) {
         const recentConversions = JSON.parse(localStorage.getItem('recentConversions')) || [];
-        recentConversions.unshift(videoData);
+        recentConversions.unshift({
+            title: videoDetails.title,
+            url: `https://www.youtube.com/watch?v=${videoDetails.videoId}`,
+            thumbnail: videoDetails.thumbnails[0]
+        });
         if (recentConversions.length > 5) {
             recentConversions.pop();
         }
@@ -232,10 +185,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const recentConversions = JSON.parse(localStorage.getItem('recentConversions')) || [];
         const recentList = document.getElementById('recent-conversions');
         recentList.innerHTML = '';
-
+        
         recentConversions.forEach(video => {
             const li = document.createElement('li');
-            li.textContent = video.title;
+            const img = document.createElement('img');
+            img.src = video.thumbnail;
+            img.alt = video.title;
+            img.width = 120;
+            li.appendChild(img);
+            
+            const titleSpan = document.createElement('span');
+            titleSpan.textContent = video.title;
+            li.appendChild(titleSpan);
+            
             li.addEventListener('click', () => {
                 document.getElementById('youtube-url').value = video.url;
                 form.dispatchEvent(new Event('submit'));
@@ -248,13 +210,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
         notification.textContent = message;
-
+        
         document.body.appendChild(notification);
-
+        
         setTimeout(() => {
             notification.classList.add('show');
         }, 10);
-
+        
         setTimeout(() => {
             notification.classList.remove('show');
             setTimeout(() => {
@@ -263,18 +225,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 
-    function formatDuration(iso8601Duration) {
-        const match = iso8601Duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
-        
-        const hours = (parseInt(match[1]) || 0);
-        const minutes = (parseInt(match[2]) || 0);
-        const seconds = (parseInt(match[3]) || 0);
+    function formatDuration(seconds) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const remainingSeconds = seconds % 60;
 
         let formattedDuration = '';
         if (hours > 0) {
             formattedDuration += `${hours}:`;
         }
-        formattedDuration += `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        formattedDuration += `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
         return formattedDuration;
     }
 
@@ -314,6 +274,3 @@ document.addEventListener('DOMContentLoaded', () => {
         showNotification('You are offline. Please check your internet connection.', 'error');
     });
 });
-                
-        
-        
