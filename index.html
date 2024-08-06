@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YOU2MP4.</title>
-  <link href="https://fonts.googleapis.com/css2?family=League+Spartan&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=League+Spartan&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <script src="https://www.youtube.com/iframe_api"></script>
 </head>
@@ -34,9 +34,13 @@
                 </div>
                 <h2 id="video-title"></h2>
                 <p id="video-duration"></p>
-                    <button class="btn download-btn" data-quality="360p">Download 360p</button>
-                    <button class="btn download-btn" data-quality="720p">Download 720p</button>
-                    <button class="btn download-btn" data-quality="1080p">Download 1080p</button>
+                <div class="format-selector-container">
+                    <label for="format-selector">Select Format:</label>
+                    <select id="format-selector"></select>
+                </div>
+                <div class="download-options">
+                    <button id="download-button" class="btn download-btn">Download</button>
+                    <button id="convert-to-mp3" class="btn convert-btn">Convert to MP3</button>
                 </div>
             </div>
         </div>
@@ -53,4 +57,4 @@
 
     <script src="script.js"></script>
 </body>
-</html>
+                    </html>
