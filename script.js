@@ -9,7 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const thumbnail = document.getElementById('thumbnail');
     const videoTitle = document.getElementById('video-title');
     const videoDuration = document.getElementById('video-duration');
-    const downloadButtons = document.querySelectorAll('.download-btn');
+    const downloadButton = document.getElementById('download-btn');
+    const formatSelector = document.getElementById('format-selector');
 
     let player;
 
@@ -37,25 +38,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    downloadButtons.forEach(button => {
-        button.addEventListener('click', async () => {
-            const quality = button.dataset.quality;
-            const youtubeUrl = document.getElementById('youtube-url').value;
+    downloadButton.addEventListener('click', async () => {
+        const youtubeUrl = document.getElementById('youtube-url').value;
+        const selectedFormat = formatSelector.value;
 
-            showLoader();
-            try {
-                const result = await downloadVideo(youtubeUrl, quality);
-                if (result.filename) {
-                    const fileData = await fetchFileData(result.filename);
-                    await saveFile(result.filename, fileData);
-                }
-                showNotification(`Download started for ${quality} version. Filename: ${result.filename}`, 'success');
-            } catch (error) {
-                showError('Failed to start download');
-            } finally {
-                hideLoader();
-            }
-        });
+        if (!selectedFormat) {
+            showError('Please select a format');
+            return;
+        }
+
+        await downloadVideo(youtubeUrl, selectedFormat);
     });
 
     function isValidYouTubeUrl(url) {
@@ -199,25 +191,43 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function downloadVideo(url, quality) {
+    async function downloadVideo(url, formatId) {
+        showLoader();
         try {
-            const response = await fetch(`${API_BASE_URL}/download`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ url, quality }),
-            });
-
+            const response = await fetch(`${API_BASE_URL}/download?url=${encodeURIComponent(url)}&format=${formatId}`);
+            
             if (!response.ok) {
-                throw new Error('Failed to download video');
+                throw new Error('Download failed');
             }
 
-            return await response.json();
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const filename = getFilenameFromContentDisposition(response.headers.get('Content-Disposition')) || 'video.mp4';
+
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = downloadUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(downloadUrl);
+            showNotification('Download started', 'success');
         } catch (error) {
             console.error('Error:', error);
-            throw error;
+            showError('Failed to download video');
+        } finally {
+            hideLoader();
         }
+    }
+
+    function getFilenameFromContentDisposition(contentDisposition) {
+        if (!contentDisposition) return null;
+        const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+        const matches = filenameRegex.exec(contentDisposition);
+        if (matches != null && matches[1]) {
+            return matches[1].replace(/['"]/g, '');
+        }
+        return null;
     }
 
     function addRecentConversion(videoData) {
@@ -283,36 +293,35 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize the application
     updateRecentConversionsList();
 
-    // Check browser support
-    function checkBrowserSupport() {
-        const requiredFeatures = {
-            'Fetch API': 'fetch' in window,
-            'Promise': 'Promise' in window,
-            'localStorage': 'localStorage' in window,
-            'Flexbox': CSS.supports('display', 'flex')
-        };
+   // Check browser support
+function checkBrowserSupport() {
+    const requiredFeatures = {
+        'Fetch API': 'fetch' in window,
+        'Promise': 'Promise' in window,
+        'localStorage': 'localStorage' in window,
+        'Flexbox': CSS.supports('display', 'flex')
+    };
 
-        let unsupportedFeatures = [];
+    let unsupportedFeatures = [];
 
-        for (let feature in requiredFeatures) {
-            if (!requiredFeatures[feature]) {
-                unsupportedFeatures.push(feature);
-            }
-        }
-
-        if (unsupportedFeatures.length > 0) {
-            showNotification(`Your browser doesn't support: ${unsupportedFeatures.join(', ')}. Some features may not work correctly.`, 'warning');
+    for (let feature in requiredFeatures) {
+        if (!requiredFeatures[feature]) {
+            unsupportedFeatures.push(feature);
         }
     }
 
-    checkBrowserSupport();
+    if (unsupportedFeatures.length > 0) {
+        showNotification(`Your browser doesn't support: ${unsupportedFeatures.join(', ')}. Some features may not work correctly.`, 'warning');
+    }
+}
 
-    // Online/Offline status
-    window.addEventListener('online', () => {
-        showNotification('You are back online!', 'success');
-    });
+checkBrowserSupport();
 
-    window.addEventListener('offline', () => {
-        showNotification('You are offline. Please check your internet connection.', 'error');
-    });
+// Online/Offline status
+window.addEventListener('online', () => {
+    showNotification('You are back online!', 'success');
+});
+
+window.addEventListener('offline', () => {
+    showNotification('You are offline. Please check your internet connection.', 'error');
 });
