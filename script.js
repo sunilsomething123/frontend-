@@ -1,7 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = 'https://you2-mp4-snzg.onrender.com/api';
-    // For local development, you might use:
+    // For local development, use:
     // const API_BASE_URL = 'http://localhost:7700/api';
+
     const form = document.getElementById('converter-form');
     const loader = document.getElementById('loader');
     const errorMessage = document.getElementById('error-message');
@@ -9,10 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const thumbnail = document.getElementById('thumbnail');
     const videoTitle = document.getElementById('video-title');
     const videoDuration = document.getElementById('video-duration');
-    const downloadButton = document.getElementById('download-btn');
+    const downloadButton = document.getElementById('download-button');
+    const convertToMp3Button = document.getElementById('convert-to-mp3');
     const formatSelector = document.getElementById('format-selector');
-
-    let player;
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const videoData = await fetchVideoInfo(youtubeUrl);
             displayVideoInfo(videoData);
+            populateFormatSelector(videoData.formats);
             addRecentConversion(videoData);
         } catch (error) {
             showError('An error occurred while fetching video information');
@@ -41,13 +42,36 @@ document.addEventListener('DOMContentLoaded', () => {
     downloadButton.addEventListener('click', async () => {
         const youtubeUrl = document.getElementById('youtube-url').value;
         const selectedFormat = formatSelector.value;
-
+        
         if (!selectedFormat) {
             showError('Please select a format');
             return;
         }
 
-        await downloadVideo(youtubeUrl, selectedFormat);
+        showLoader();
+        try {
+            await downloadVideo(youtubeUrl, selectedFormat);
+            showNotification('Download started', 'success');
+        } catch (error) {
+            showError('Failed to start download');
+        } finally {
+            hideLoader();
+        }
+    });
+
+    convertToMp3Button.addEventListener('click', async () => {
+        const youtubeUrl = document.getElementById('youtube-url').value;
+        
+        showLoader();
+        try {
+            const result = await convertToMp3(youtubeUrl);
+            showNotification(`MP3 conversion complete. Filename: ${result.filename}`, 'success');
+            downloadFile(result.filename);
+        } catch (error) {
+            showError('Failed to convert to MP3');
+        } finally {
+            hideLoader();
+        }
     });
 
     function isValidYouTubeUrl(url) {
@@ -65,12 +89,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showError(message) {
         errorMessage.textContent = message;
-        errorMessage.style.display = 'block';
     }
 
     function clearError() {
         errorMessage.textContent = '';
-        errorMessage.style.display = 'none';
     }
 
     function hideVideoInfo() {
@@ -78,146 +100,76 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchVideoInfo(url) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/video-info`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ url }),
-            });
+        const response = await fetch(`${API_BASE_URL}/video-info`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url: url }),
+        });
 
-            if (!response.ok) {
-                throw new Error('Failed to fetch video information');
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('Error:', error);
-            throw error;
+        if (!response.ok) {
+            throw new Error('Failed to fetch video information');
         }
+
+        return await response.json();
     }
 
     function displayVideoInfo(videoData) {
         thumbnail.src = videoData.thumbnail;
         videoTitle.textContent = videoData.title;
         videoDuration.textContent = `Duration: ${formatDuration(videoData.duration)}`;
-        const videoId = extractVideoId(document.getElementById('youtube-url').value);
-        if (videoId) {
-            createVideoPreview(videoId);
-        }
         videoInfo.style.display = 'block';
-
-        // Add click event to thumbnail to play/pause video
-        thumbnail.addEventListener('click', toggleVideoPlay);
     }
 
-    function createVideoPreview(videoId) {
-        if (player) {
-            player.loadVideoById(videoId);
-        } else {
-            player = new YT.Player('video-preview', {
-                height: '100%',
-                width: '100%',
-                videoId: videoId,
-                playerVars: {
-                    'autoplay': 0,
-                    'controls': 1,
-                    'modestbranding': 1,
-                    'rel': 0
-                },
-                events: {
-                    'onReady': onPlayerReady
-                }
-            });
-        }
-    }
-
-    function onPlayerReady(event) {
-        // The video is ready to play
-        thumbnail.classList.add('hide');
-    }
-
-    function toggleVideoPlay() {
-        if (player && typeof player.getPlayerState === 'function') {
-            if (player.getPlayerState() === YT.PlayerState.PLAYING) {
-                player.pauseVideo();
-                thumbnail.classList.remove('hide');
-            } else {
-                player.playVideo();
-                thumbnail.classList.add('hide');
-            }
-        }
-    }
-
-    function extractVideoId(url) {
-        const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
-        const match = url.match(regExp);
-        return (match && match[7].length == 11) ? match[7] : false;
-    }
-
-    async function fetchFileData(filename) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/download-file/${filename}`);
-            if (!response.ok) {
-                throw new Error('Failed to fetch file data');
-            }
-            return await response.blob();
-        } catch (error) {
-            console.error('Error:', error);
-            throw error;
-        }
-    }
-
-    async function saveFile(filename, fileData) {
-        try {
-            const handle = await window.showSaveFilePicker({
-                suggestedName: filename,
-                types: [{
-                    description: 'MP4 Files',
-                    accept: {
-                        'video/mp4': ['.mp4']
-                    }
-                }]
-            });
-
-            const writable = await handle.createWritable();
-            await writable.write(fileData);
-            await writable.close();
-
-            console.log('File saved successfully!');
-        } catch (error) {
-            console.error('Error saving file:', error);
-        }
+    function populateFormatSelector(formats) {
+        formatSelector.innerHTML = '';
+        formats.forEach(format => {
+            const option = document.createElement('option');
+            option.value = format.format_id;
+            option.textContent = `${format.resolution} - ${format.ext} (${formatFileSize(format.filesize)})`;
+            formatSelector.appendChild(option);
+        });
     }
 
     async function downloadVideo(url, formatId) {
-        showLoader();
-        try {
-            const response = await fetch(`${API_BASE_URL}/download?url=${encodeURIComponent(url)}&format=${formatId}`);
-            
-            if (!response.ok) {
-                throw new Error('Download failed');
-            }
-
-            const blob = await response.blob();
-            const downloadUrl = window.URL.createObjectURL(blob);
-            const filename = getFilenameFromContentDisposition(response.headers.get('Content-Disposition')) || 'video.mp4';
-
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = downloadUrl;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(downloadUrl);
-            showNotification('Download started', 'success');
-        } catch (error) {
-            console.error('Error:', error);
-            showError('Failed to download video');
-        } finally {
-            hideLoader();
+        const response = await fetch(`${API_BASE_URL}/download?url=${encodeURIComponent(url)}&format=${formatId}`);
+        
+        if (!response.ok) {
+            throw new Error('Download failed');
         }
+
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const filename = getFilenameFromContentDisposition(response.headers.get('Content-Disposition')) || 'video.mp4';
+
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = downloadUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(downloadUrl);
+    }
+
+    async function convertToMp3(url) {
+        const response = await fetch(`${API_BASE_URL}/convert-to-mp3`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url: url }),
+        });
+
+        if (!response.ok) {
+            throw new Error('MP3 conversion failed');
+        }
+
+        return await response.json();
+    }
+
+    function downloadFile(filename) {
+        window.location.href = `${API_BASE_URL}/download-file/${filename}`;
     }
 
     function getFilenameFromContentDisposition(contentDisposition) {
@@ -230,9 +182,32 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     }
 
+    function formatDuration(duration) {
+        const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+        const hours = (match[1] && match[1].slice(0, -1)) || 0;
+        const minutes = (match[2] && match[2].slice(0, -1)) || 0;
+        const seconds = (match[3] && match[3].slice(0, -1)) || 0;
+        return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:${seconds.padStart(2, '0')}`;
+    }
+
+    function formatFileSize(bytes) {
+        if (!bytes) return 'Unknown size';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let i = 0;
+        while (bytes >= 1024 && i < units.length - 1) {
+            bytes /= 1024;
+            i++;
+        }
+        return `${bytes.toFixed(2)} ${units[i]}`;
+    }
+
     function addRecentConversion(videoData) {
         const recentConversions = JSON.parse(localStorage.getItem('recentConversions')) || [];
-        recentConversions.unshift(videoData);
+        recentConversions.unshift({
+            title: videoData.title,
+            thumbnail: videoData.thumbnail,
+            duration: videoData.duration
+        });
         if (recentConversions.length > 5) {
             recentConversions.pop();
         }
@@ -244,12 +219,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const recentConversions = JSON.parse(localStorage.getItem('recentConversions')) || [];
         const recentList = document.getElementById('recent-conversions');
         recentList.innerHTML = '';
-
+        
         recentConversions.forEach(video => {
             const li = document.createElement('li');
-            li.textContent = video.title;
+            const img = document.createElement('img');
+            img.src = video.thumbnail;
+            img.alt = video.title;
+            img.width = 120;
+            li.appendChild(img);
+            
+            const titleSpan = document.createElement('span');
+            titleSpan.textContent = video.title;
+            li.appendChild(titleSpan);
+            
+            const durationSpan = document.createElement('span');
+            durationSpan.textContent = formatDuration(video.duration);
+            li.appendChild(durationSpan);
+            
             li.addEventListener('click', () => {
-                document.getElementById('youtube-url').value = video.url;
+                document.getElementById('youtube-url').value = `https://www.youtube.com/watch?v=${video.id}`;
                 form.dispatchEvent(new Event('submit'));
             });
             recentList.appendChild(li);
@@ -260,13 +248,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
         notification.textContent = message;
-
+        
         document.body.appendChild(notification);
-
+        
         setTimeout(() => {
             notification.classList.add('show');
         }, 10);
-
+        
         setTimeout(() => {
             notification.classList.remove('show');
             setTimeout(() => {
@@ -275,53 +263,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 
-    function formatDuration(iso8601Duration) {
-        const match = iso8601Duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
-        
-        const hours = (parseInt(match[1]) || 0);
-        const minutes = (parseInt(match[2]) || 0);
-        const seconds = (parseInt(match[3]) || 0);
-
-        let formattedDuration = '';
-        if (hours > 0) {
-            formattedDuration += `${hours}:`;
-        }
-        formattedDuration += `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        return formattedDuration;
-    }
-
     // Initialize the application
     updateRecentConversionsList();
 
-   // Check browser support
-function checkBrowserSupport() {
-    const requiredFeatures = {
-        'Fetch API': 'fetch' in window,
-        'Promise': 'Promise' in window,
-        'localStorage': 'localStorage' in window,
-        'Flexbox': CSS.supports('display', 'flex')
-    };
+    // Check browser support
+    function checkBrowserSupport() {
+        const requiredFeatures = {
+            'Fetch API': 'fetch' in window,
+            'Promise': 'Promise' in window,
+            'localStorage': 'localStorage' in window,
+            'Flexbox': CSS.supports('display', 'flex')
+        };
 
-    let unsupportedFeatures = [];
+        let unsupportedFeatures = [];
 
-    for (let feature in requiredFeatures) {
-        if (!requiredFeatures[feature]) {
-            unsupportedFeatures.push(feature);
+        for (let feature in requiredFeatures) {
+            if (!requiredFeatures[feature]) {
+                unsupportedFeatures.push(feature);
+            }
+        }
+
+        if (unsupportedFeatures.length > 0) {
+            showNotification(`Your browser doesn't support: ${unsupportedFeatures.join(', ')}. Some features may not work correctly.`, 'warning');
         }
     }
 
-    if (unsupportedFeatures.length > 0) {
-        showNotification(`Your browser doesn't support: ${unsupportedFeatures.join(', ')}. Some features may not work correctly.`, 'warning');
-    }
-}
+    checkBrowserSupport();
 
-checkBrowserSupport();
+    // Online/Offline status
+    window.addEventListener('online', () => {
+        showNotification('You are back online!', 'success');
+    });
 
-// Online/Offline status
-window.addEventListener('online', () => {
-    showNotification('You are back online!', 'success');
-});
-
-window.addEventListener('offline', () => {
-    showNotification('You are offline. Please check your internet connection.', 'error');
+    window.addEventListener('offline', () => {
+        showNotification('You are offline. Please check your internet connection.', 'error');
+    });
 });
