@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
             populateFormatSelector(videoData.formats);
             addRecentConversion(videoData);
         } catch (error) {
-            showError('An error occurred while fetching video information');
+            showError(error.message);
         } finally {
             hideLoader();
         }
@@ -75,8 +75,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function isValidYouTubeUrl(url) {
-        const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
-        return youtubeRegex.test(url);
+        const patterns = [
+            /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/(watch\?v=|embed\/|v\/|shorts\/)?([a-zA-Z0-9_-]{11})$/,
+            /^(https?:\/\/)?(www\.)?youtube\.com\/playlist\?list=[a-zA-Z0-9_-]+$/
+        ];
+        return patterns.some(pattern => pattern.test(url));
     }
 
     function showLoader() {
@@ -100,25 +103,45 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchVideoInfo(url) {
-        const response = await fetch(`${API_BASE_URL}/video-info`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ url: url }),
-        });
+        try {
+            const response = await fetch(`${API_BASE_URL}/video-info`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ url: url }),
+            });
 
-        if (!response.ok) {
-            throw new Error('Failed to fetch video information');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to fetch video information');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching video info:', error);
+            throw error;
         }
-
-        return await response.json();
     }
 
     function displayVideoInfo(videoData) {
         thumbnail.src = videoData.thumbnail;
         videoTitle.textContent = videoData.title;
         videoDuration.textContent = `Duration: ${formatDuration(videoData.duration)}`;
+        
+        const viewCount = document.createElement('p');
+        viewCount.textContent = `Views: ${formatNumber(videoData.viewCount)}`;
+        
+        const likeCount = document.createElement('p');
+        likeCount.textContent = `Likes: ${formatNumber(videoData.likeCount)}`;
+        
+        const publishDate = document.createElement('p');
+        publishDate.textContent = `Published: ${formatDate(videoData.publishedAt)}`;
+        
+        videoInfo.appendChild(viewCount);
+        videoInfo.appendChild(likeCount);
+        videoInfo.appendChild(publishDate);
+        
         videoInfo.style.display = 'block';
     }
 
@@ -187,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const hours = (match[1] && match[1].slice(0, -1)) || 0;
         const minutes = (match[2] && match[2].slice(0, -1)) || 0;
         const seconds = (match[3] && match[3].slice(0, -1)) || 0;
-        return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:${seconds.padStart(2, '0')}`;
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     }
 
     function formatFileSize(bytes) {
