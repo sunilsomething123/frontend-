@@ -11,8 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const videoTitle = document.getElementById('video-title');
     const videoDuration = document.getElementById('video-duration');
     const downloadButtons = document.querySelectorAll('.download-btn');
-    const convertToMp3Button = document.getElementById('convert-to-mp3-btn');
-    const recentConversionsList = document.getElementById('recent-conversions');
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -45,34 +43,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
             showLoader();
             try {
-                const result = await downloadVideo(youtubeUrl, quality);
-                showNotification(`Download started for ${quality} version. Filename: ${result.filename}`, 'success');
-                // You might want to add logic here to handle the downloaded file
+                const response = await fetch(`${API_BASE_URL}/download`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: youtubeUrl, quality: quality }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch download URL');
+                }
+
+                const data = await response.json();
+                if (data.download_url) {
+                    window.location.href = data.download_url; // Redirect to the download URL
+                } else {
+                    showError('Failed to get download URL');
+                }
             } catch (error) {
                 showError('Failed to start download');
             } finally {
                 hideLoader();
             }
         });
-    });
-
-    convertToMp3Button.addEventListener('click', async () => {
-        const filename = document.getElementById('filename').value;
-
-        if (!filename) {
-            showError('No filename provided');
-            return;
-        }
-
-        showLoader();
-        try {
-            const result = await convertToMp3(filename);
-            showNotification(`Conversion to MP3 started. Filename: ${result.filename}`, 'success');
-        } catch (error) {
-            showError('Failed to convert video to MP3');
-        } finally {
-            hideLoader();
-        }
     });
 
     function isValidYouTubeUrl(url) {
@@ -128,71 +122,17 @@ document.addEventListener('DOMContentLoaded', () => {
         videoInfo.style.display = 'block';
     }
 
-    async function downloadVideo(url, quality) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/download`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ url: url, quality: quality }),
-            });
+    function formatDuration(seconds) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const remainingSeconds = seconds % 60;
 
-            if (!response.ok) {
-                throw new Error('Failed to download video');
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('Error:', error);
-            throw error;
+        let formattedDuration = '';
+        if (hours > 0) {
+            formattedDuration += `${hours}:`;
         }
-    }
-
-    async function convertToMp3(filename) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/convert-to-mp3`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ filename: filename }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to convert video to MP3');
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('Error:', error);
-            throw error;
-        }
-    }
-
-    function downloadFile(filename) {
-        window.location.href = `${API_BASE_URL}/download-file/${filename}`;
-    }
-
-    async function deleteFile(filename) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/delete-file`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ filename: filename }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to delete file');
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('Error:', error);
-            throw error;
-        }
+        formattedDuration += `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+        return formattedDuration;
     }
 
     function addRecentConversion(videoData) {
@@ -207,7 +147,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateRecentConversionsList() {
         const recentConversions = JSON.parse(localStorage.getItem('recentConversions')) || [];
-        recentConversionsList.innerHTML = '';
+        const recentList = document.getElementById('recent-conversions');
+        recentList.innerHTML = '';
 
         recentConversions.forEach(video => {
             const li = document.createElement('li');
@@ -216,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('youtube-url').value = video.url;
                 form.dispatchEvent(new Event('submit'));
             });
-            recentConversionsList.appendChild(li);
+            recentList.appendChild(li);
         });
     }
 
@@ -237,18 +178,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.body.removeChild(notification);
             }, 300);
         }, 3000);
-    }
-
-    function formatDuration(duration) {
-        const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
-        if (match) {
-            const hours = match[1] ? parseInt(match[1], 10) : 0;
-            const minutes = match[2] ? parseInt(match[2], 10) : 0;
-            const seconds = match[3] ? parseInt(match[3], 10) : 0;
-
-            return `${hours > 0 ? hours + ':' : ''}${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        }
-        return 'Unknown';
     }
 
     // Initialize the application
