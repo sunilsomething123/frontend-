@@ -38,30 +38,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    async function initiateDownload(url) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/get-download-url`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ url: url }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to retrieve download URL');
-            }
-
-            const result = await response.json();
-            if (result.download_url) {
-                window.location.href = result.download_url;  // Redirect to download the video from YouTube's CDN
-            } else {
-                throw new Error('Download URL not found');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            showError('Failed to start download');
-        }
+    function downloadVideo(videoUrl) {
+        // Construct the backend URL that includes the video URL as a query parameter
+        const backendUrl = `/redirect?video_url=${encodeURIComponent(videoUrl)}`;
+        
+        // Redirect the user to the backend, which will then redirect to the Google Video URL
+        window.location.href = backendUrl;
     }
 
     downloadButtons.forEach(button => {
@@ -75,7 +57,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             showLoader();
             try {
-                await initiateDownload(youtubeUrl);
+                // Instead of initiateDownload, call downloadVideo directly
+                downloadVideo(youtubeUrl);
                 showNotification('Download started', 'success');
             } catch (error) {
                 showError('Failed to start download');
