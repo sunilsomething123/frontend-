@@ -1,8 +1,8 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => { 
     const API_BASE_URL = 'https://you2-mp4-snzg.onrender.com/api'; 
     // For local development, you might use:
     // const API_BASE_URL = 'http://localhost:7700/api';
-
+    
     const form = document.getElementById('converter-form');
     const loader = document.getElementById('loader');
     const errorMessage = document.getElementById('error-message');
@@ -10,9 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const thumbnail = document.getElementById('thumbnail');
     const videoTitle = document.getElementById('video-title');
     const videoDuration = document.getElementById('video-duration');
-    
-    // Declare downloadButtons only once
-    const downloadButtons = document.querySelectorAll('.download-btn');
+    const downloadButton = document.querySelector('.download-btn');
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -38,35 +36,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    downloadButton.addEventListener('click', async () => {
+        const youtubeUrl = document.getElementById('youtube-url').value;
+
+        if (!isValidYouTubeUrl(youtubeUrl)) {
+            showError('Please enter a valid YouTube URL');
+            return;
+        }
+
+        showLoader();
+        try {
+            downloadVideo(youtubeUrl);
+            showNotification('Download started', 'success');
+        } catch (error) {
+            showError('Failed to start download');
+        } finally {
+            hideLoader();
+        }
+    });
+
     function downloadVideo(videoUrl) {
-        // Construct the backend URL that includes the video URL as a query parameter
-        const backendUrl = `/api/redirect?video_url=${encodeURIComponent(videoUrl)}`;
-        
-        // Redirect the user to the backend, which will then redirect to the Google Video URL
+        const backendUrl = `${API_BASE_URL}/redirect?video_url=${encodeURIComponent(videoUrl)}`;
         window.location.href = backendUrl;
     }
-
-    downloadButtons.forEach(button => {
-        button.addEventListener('click', async () => {
-            const youtubeUrl = document.getElementById('youtube-url').value;
-
-            if (!isValidYouTubeUrl(youtubeUrl)) {
-                showError('Please enter a valid YouTube URL');
-                return;
-            }
-
-            showLoader();
-            try {
-                // Instead of initiateDownload, call downloadVideo directly
-                downloadVideo(youtubeUrl);
-                showNotification('Download started', 'success');
-            } catch (error) {
-                showError('Failed to start download');
-            } finally {
-                hideLoader();
-            }
-        });
-    });
 
     function isValidYouTubeUrl(url) {
         const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
@@ -182,10 +174,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 
-    // Initialize the application
     updateRecentConversionsList();
 
-    // Check browser support
     function checkBrowserSupport() {
         const requiredFeatures = {
             'Fetch API': 'fetch' in window,
@@ -209,7 +199,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     checkBrowserSupport();
 
-    // Online/Offline status
     window.addEventListener('online', () => {
         showNotification('You are back online!', 'success');
     });
