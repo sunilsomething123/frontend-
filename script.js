@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const API_BASE_URL = 'https://you2-mp4-snzg.onrender.com/api';
+    const API_BASE_URL = 'https://you2-mp4-snzg.onrender.com/api'; 
     // For local development, you might use:
     // const API_BASE_URL = 'http://localhost:7700/api';
 
@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const thumbnail = document.getElementById('thumbnail');
     const videoTitle = document.getElementById('video-title');
     const videoDuration = document.getElementById('video-duration');
-
+    
     // Declare downloadButtons only once
     const downloadButtons = document.querySelectorAll('.download-btn');
 
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function downloadVideo(videoUrl) {
         // Construct the backend URL that includes the video URL as a query parameter
-        const backendUrl = `/redirect?video_url=${encodeURIComponent(videoUrl)}`;
+        const backendUrl = `/api/redirect?video_url=${encodeURIComponent(videoUrl)}`;
         
         // Redirect the user to the backend, which will then redirect to the Google Video URL
         window.location.href = backendUrl;
@@ -121,16 +121,19 @@ document.addEventListener('DOMContentLoaded', () => {
         videoInfo.style.display = 'block';
     }
 
-    function formatDuration(seconds) {
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
-        const remainingSeconds = seconds % 60;
+    function formatDuration(durationISO) {
+        const match = durationISO.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+        if (!match) return 'Unknown';
+
+        const hours = match[1] ? parseInt(match[1], 10) : 0;
+        const minutes = match[2] ? parseInt(match[2], 10) : 0;
+        const seconds = match[3] ? parseInt(match[3], 10) : 0;
 
         let formattedDuration = '';
         if (hours > 0) {
             formattedDuration += `${hours}:`;
         }
-        formattedDuration += `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+        formattedDuration += `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         return formattedDuration;
     }
 
