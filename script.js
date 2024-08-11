@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const thumbnail = document.getElementById('thumbnail');
     const videoTitle = document.getElementById('video-title');
     const videoDuration = document.getElementById('video-duration');
+
+    // Declare downloadButtons only once
     const downloadButtons = document.querySelectorAll('.download-btn');
 
     form.addEventListener('submit', async (e) => {
@@ -37,52 +39,51 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     async function initiateDownload(url) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/get-download-url`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ url: url }),
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to retrieve download URL');
-        }
-
-        const result = await response.json();
-        if (result.download_url) {
-            window.location.href = result.download_url;  // Redirect to download the video from YouTube's CDN
-        } else {
-            throw new Error('Download URL not found');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        showError('Failed to start download');
-    }
-}
-
-const downloadButtons = document.querySelectorAll('.download-btn');
-downloadButtons.forEach(button => {
-    button.addEventListener('click', async () => {
-        const youtubeUrl = document.getElementById('youtube-url').value;
-
-        if (!isValidYouTubeUrl(youtubeUrl)) {
-            showError('Please enter a valid YouTube URL');
-            return;
-        }
-
-        showLoader();
         try {
-            await initiateDownload(youtubeUrl);
-            showNotification('Download started', 'success');
+            const response = await fetch(`${API_BASE_URL}/get-download-url`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ url: url }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to retrieve download URL');
+            }
+
+            const result = await response.json();
+            if (result.download_url) {
+                window.location.href = result.download_url;  // Redirect to download the video from YouTube's CDN
+            } else {
+                throw new Error('Download URL not found');
+            }
         } catch (error) {
+            console.error('Error:', error);
             showError('Failed to start download');
-        } finally {
-            hideLoader();
         }
+    }
+
+    downloadButtons.forEach(button => {
+        button.addEventListener('click', async () => {
+            const youtubeUrl = document.getElementById('youtube-url').value;
+
+            if (!isValidYouTubeUrl(youtubeUrl)) {
+                showError('Please enter a valid YouTube URL');
+                return;
+            }
+
+            showLoader();
+            try {
+                await initiateDownload(youtubeUrl);
+                showNotification('Download started', 'success');
+            } catch (error) {
+                showError('Failed to start download');
+            } finally {
+                hideLoader();
+            }
+        });
     });
-});
 
     function isValidYouTubeUrl(url) {
         const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
