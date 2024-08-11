@@ -36,38 +36,53 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    downloadButtons.forEach(button => {
-        button.addEventListener('click', async () => {
-            const quality = button.dataset.quality;
-            const youtubeUrl = document.getElementById('youtube-url').value;
-
-            showLoader();
-            try {
-                const response = await fetch(`${API_BASE_URL}/download`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ url: youtubeUrl, quality: quality }),
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to fetch download URL');
-                }
-
-                const data = await response.json();
-                if (data.download_url) {
-                    window.location.href = data.download_url; // Redirect to the download URL
-                } else {
-                    showError('Failed to get download URL');
-                }
-            } catch (error) {
-                showError('Failed to start download');
-            } finally {
-                hideLoader();
-            }
+    async function initiateDownload(url) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/get-download-url`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url: url }),
         });
+
+        if (!response.ok) {
+            throw new Error('Failed to retrieve download URL');
+        }
+
+        const result = await response.json();
+        if (result.download_url) {
+            window.location.href = result.download_url;  // Redirect to download the video from YouTube's CDN
+        } else {
+            throw new Error('Download URL not found');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showError('Failed to start download');
+    }
+}
+
+const downloadButtons = document.querySelectorAll('.download-btn');
+downloadButtons.forEach(button => {
+    button.addEventListener('click', async () => {
+        const youtubeUrl = document.getElementById('youtube-url').value;
+
+        if (!isValidYouTubeUrl(youtubeUrl)) {
+            showError('Please enter a valid YouTube URL');
+            return;
+        }
+
+        showLoader();
+        try {
+            await initiateDownload(youtubeUrl);
+            showNotification('Download started', 'success');
+        } catch (error) {
+            showError('Failed to start download');
+        } finally {
+            hideLoader();
+        }
     });
+});
 
     function isValidYouTubeUrl(url) {
         const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
