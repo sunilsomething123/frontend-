@@ -55,11 +55,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+  // Redirect to download URL
     function downloadVideo(videoUrl) {
         const backendUrl = `${API_BASE_URL}/redirect?video_url=${encodeURIComponent(videoUrl)}`;
         window.location.href = backendUrl;
     }
 
+    // Validate YouTube URL format
     function isValidYouTubeUrl(url) {
         const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
         return youtubeRegex.test(url);
