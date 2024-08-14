@@ -57,9 +57,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Redirect to download URL
     function downloadVideo(videoUrl) {
-        const backendUrl = `${API_BASE_URL}/redirect?video_url=${encodeURIComponent(videoUrl)}`;
-        window.location.href = backendUrl;
+    // Construct the URL to get the Google Video URL from the backend
+    const googleVideoUrlApi = `https://you2-mp4-snzg.onrender.com/api/get-google-video-url?url=${encodeURIComponent(videoUrl)}`;
+
+    // Fetch the Google Video URL from the backend
+    fetch(googleVideoUrlApi)
+        .then(response => response.json())
+        .then(data => {
+            if (data.google_video_url) {
+                // Construct the redirect URL to your Vercel app
+                const redirectUrl = `https://you2-mp4.vercel.app/download?video_url=${encodeURIComponent(data.google_video_url)}`;
+                // Redirect to the Vercel app to handle the download
+                window.location.href = redirectUrl;
+            } else {
+                showError('Failed to retrieve Google Video URL');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching Google Video URL:', error);
+            showError('An error occurred while processing your request');
+        });
+}
+
+downloadButton.addEventListener('click', () => {
+    const youtubeUrl = document.getElementById('youtube-url').value;
+
+    if (!isValidYouTubeUrl(youtubeUrl)) {
+        showError('Please enter a valid YouTube URL');
+        return;
     }
+
+    try {
+        downloadVideo(youtubeUrl);
+        showNotification('Redirecting to download page...', 'success');
+    } catch (error) {
+        showError('Failed to start download');
+        console.error('Download error:', error);
+    }
+});
 
     // Validate YouTube URL format
     function isValidYouTubeUrl(url) {
