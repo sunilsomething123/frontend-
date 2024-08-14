@@ -55,28 +55,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    function downloadVideo(videoUrl) {
-    const googleVideoUrlApi = `${API_BASE_URL}/get-google-video-url?url=${encodeURIComponent(videoUrl)}`;
-
-    return fetch(googleVideoUrlApi, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        mode: 'cors'  // Ensure CORS is enabled
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.google_video_url) {
-            window.location.href = data.google_video_url;
-        } else {
-            throw new Error('Failed to retrieve Google Video URL');
-        }
-    })
-    .catch(error => {
-        console.error('Error fetching Google Video URL:', error);
-        showError('An error occurred while processing your request');
-    });
+    function redirectToGoogleVideoUrl(youtubeUrl) {
+    const encodedUrl = encodeURIComponent(youtubeUrl);
+    const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+    const targetUrl = `/api/get-google-video-url?url=${encodedUrl}`;
+    
+    fetch(proxyUrl + targetUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.text(); // Use text() instead of json() to catch errors
+        })
+        .then(text => {
+            try {
+                const data = JSON.parse(text);
+                if (data.error) {
+                    alert("Error: " + data.error);
+                } else {
+                    window.location.href = data.google_video_url;
+                }
+            } catch (error) {
+                alert("Failed to parse the response. It might be due to CORS restrictions. Please try again.");
+                console.error("Parsing error:", error);
+            }
+        })
+        .catch(error => {
+            console.error("Error fetching Google Video URL:", error);
+            alert("Failed to fetch Google Video URL. " + error.message);
+        });
     }
 
     // Validate YouTube URL format
