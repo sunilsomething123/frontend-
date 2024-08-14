@@ -55,27 +55,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Directly redirect to the Google Video URL
     function downloadVideo(videoUrl) {
-        // Construct the URL to get the Google Video URL from the backend
-        const googleVideoUrlApi = `${API_BASE_URL}/get-google-video-url?url=${encodeURIComponent(videoUrl)}`;
+    // Construct the URL to get the Google Video URL from the backend
+    const googleVideoUrlApi = `${API_BASE_URL}/get-google-video-url?url=${encodeURIComponent(videoUrl)}`;
 
-        // Fetch the Google Video URL from the backend
-        return fetch(googleVideoUrlApi)
-            .then(response => response.json())
-            .then(data => {
-                if (data.google_video_url) {
-                    // Directly redirect to the Google Video URL
-                    window.location.href = data.google_video_url;
-                } else {
-                    throw new Error('Failed to retrieve Google Video URL');
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching Google Video URL:', error);
-                showError('An error occurred while processing your request');
-                throw error; // Re-throw to handle in the outer catch block
-            });
+    // Fetch the Google Video URL from the backend
+    return fetch(googleVideoUrlApi)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.google_video_url) {
+                // Directly redirect to the Google Video URL
+                window.location.href = data.google_video_url;
+            } else {
+                throw new Error('Failed to retrieve Google Video URL');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching Google Video URL:', error);
+            showError('An error occurred while processing your request');
+            throw error; // Re-throw to handle in the outer catch block
+        });
     }
 
     // Validate YouTube URL format
