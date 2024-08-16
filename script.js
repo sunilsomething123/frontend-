@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         showLoader();
         try {
-            await downloadVideo(youtubeUrl);
+            await redirectToGoogleVideoUrl(youtubeUrl);
             showNotification('Redirecting to video playback...', 'success');
         } catch (error) {
             showError('Failed to start download');
@@ -58,8 +58,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function redirectToGoogleVideoUrl(youtubeUrl) {
         const encodedUrl = encodeURIComponent(youtubeUrl);
         const targetUrl = `${API_BASE_URL}/get-google-video-url?url=${encodedUrl}`;
-        
-        fetch(targetUrl)
+
+        return fetch(targetUrl)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -68,14 +68,17 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .then(data => {
                 if (data.error) {
-                    alert("Error: " + data.error);
-                } else {
+                    throw new Error(data.error);
+                }
+                if (data.google_video_url) {
                     window.location.href = data.google_video_url;
+                } else {
+                    throw new Error('Google Video URL not found in response');
                 }
             })
             .catch(error => {
                 console.error("Error fetching Google Video URL:", error);
-                alert("Failed to fetch Google Video URL. " + error.message);
+                showError("Failed to fetch Google Video URL. " + error.message);
             });
     }
 
