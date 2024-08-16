@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => { 
-    const API_BASE_URL = 'https://you2-mp4-snzg.onrender.com/api';
+    const API_BASE_URL = 'https://you2-mp4-snzg.onrender.com/api'; 
     // For local development, you might use:
     // const API_BASE_URL = 'http://localhost:7700/api';
     
@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const youtubeUrl = document.getElementById('youtube-url').value.trim();
+        const youtubeUrl = document.getElementById('youtube-url').value;
 
         if (!isValidYouTubeUrl(youtubeUrl)) {
             showError('Please enter a valid YouTube URL');
@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     downloadButton.addEventListener('click', async () => {
-        const youtubeUrl = document.getElementById('youtube-url').value.trim();
+        const youtubeUrl = document.getElementById('youtube-url').value;
 
         if (!isValidYouTubeUrl(youtubeUrl)) {
             showError('Please enter a valid YouTube URL');
@@ -57,28 +57,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function redirectToGoogleVideoUrl(youtubeUrl) {
         const encodedUrl = encodeURIComponent(youtubeUrl);
+        const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
         const targetUrl = `${API_BASE_URL}/get-google-video-url?url=${encodedUrl}`;
-
-        return fetch(targetUrl)
+        
+        return fetch(proxyUrl + targetUrl)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                return response.json(); // Expecting JSON response
+                return response.text();
             })
-            .then(data => {
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                if (data.google_video_url) {
-                    window.location.href = data.google_video_url;
-                } else {
-                    throw new Error('Google Video URL not found in response');
+            .then(text => {
+                try {
+                    const data = JSON.parse(text);
+                    if (data.error) {
+                        throw new Error(data.error);
+                    } else {
+                        window.location.href = data.google_video_url;
+                    }
+                } catch (error) {
+                    throw new Error("Failed to parse the response. It might be due to CORS restrictions. Please try again.");
                 }
             })
             .catch(error => {
                 console.error("Error fetching Google Video URL:", error);
-                showError("Failed to fetch Google Video URL. " + error.message);
+                throw new Error("Failed to fetch Google Video URL. " + error.message);
             });
     }
 
@@ -101,8 +104,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function clearError() {
-        errorMessage.style.display = 'none';
         errorMessage.textContent = '';
+        errorMessage.style.display = 'none';
     }
 
     function hideVideoInfo() {
