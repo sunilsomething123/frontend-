@@ -57,27 +57,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function redirectToGoogleVideoUrl(youtubeUrl) {
         const encodedUrl = encodeURIComponent(youtubeUrl);
-        const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
-        const targetUrl = `/api/get-google-video-url?url=${encodedUrl}`;
+        const targetUrl = `${API_BASE_URL}/get-google-video-url?url=${encodedUrl}`;
         
-        fetch(proxyUrl + targetUrl)
+        fetch(targetUrl)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                return response.text(); // Use text() instead of json() to catch errors
+                return response.json(); // Expecting JSON response
             })
-            .then(text => {
-                try {
-                    const data = JSON.parse(text);
-                    if (data.error) {
-                        alert("Error: " + data.error);
-                    } else {
-                        window.location.href = data.google_video_url;
-                    }
-                } catch (error) {
-                    alert("Failed to parse the response. It might be due to CORS restrictions. Please try again.");
-                    console.error("Parsing error:", error);
+            .then(data => {
+                if (data.error) {
+                    alert("Error: " + data.error);
+                } else {
+                    window.location.href = data.google_video_url;
                 }
             })
             .catch(error => {
