@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => { 
-    const API_BASE_URL = 'https://you2-mp4-snzg.onrender.com/api'; 
+    const API_BASE_URL = 'https://you2-mp4-snzg.onrender.com/api';
     // For local development, you might use:
     // const API_BASE_URL = 'http://localhost:7700/api';
     
@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const youtubeUrl = document.getElementById('youtube-url').value;
+        const youtubeUrl = document.getElementById('youtube-url').value.trim();
 
         if (!isValidYouTubeUrl(youtubeUrl)) {
             showError('Please enter a valid YouTube URL');
@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     downloadButton.addEventListener('click', async () => {
-        const youtubeUrl = document.getElementById('youtube-url').value;
+        const youtubeUrl = document.getElementById('youtube-url').value.trim();
 
         if (!isValidYouTubeUrl(youtubeUrl)) {
             showError('Please enter a valid YouTube URL');
@@ -56,37 +56,36 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function redirectToGoogleVideoUrl(youtubeUrl) {
-    const encodedUrl = encodeURIComponent(youtubeUrl);
-    const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
-    const targetUrl = `/api/get-google-video-url?url=${encodedUrl}`;
-    
-    fetch(proxyUrl + targetUrl)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.text(); // Use text() instead of json() to catch errors
-        })
-        .then(text => {
-            try {
-                const data = JSON.parse(text);
-                if (data.error) {
-                    alert("Error: " + data.error);
-                } else {
-                    window.location.href = data.google_video_url;
+        const encodedUrl = encodeURIComponent(youtubeUrl);
+        const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+        const targetUrl = `/api/get-google-video-url?url=${encodedUrl}`;
+        
+        fetch(proxyUrl + targetUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
-            } catch (error) {
-                alert("Failed to parse the response. It might be due to CORS restrictions. Please try again.");
-                console.error("Parsing error:", error);
-            }
-        })
-        .catch(error => {
-            console.error("Error fetching Google Video URL:", error);
-            alert("Failed to fetch Google Video URL. " + error.message);
-        });
+                return response.text(); // Use text() instead of json() to catch errors
+            })
+            .then(text => {
+                try {
+                    const data = JSON.parse(text);
+                    if (data.error) {
+                        alert("Error: " + data.error);
+                    } else {
+                        window.location.href = data.google_video_url;
+                    }
+                } catch (error) {
+                    alert("Failed to parse the response. It might be due to CORS restrictions. Please try again.");
+                    console.error("Parsing error:", error);
+                }
+            })
+            .catch(error => {
+                console.error("Error fetching Google Video URL:", error);
+                alert("Failed to fetch Google Video URL. " + error.message);
+            });
     }
 
-    // Validate YouTube URL format
     function isValidYouTubeUrl(url) {
         const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
         return youtubeRegex.test(url);
@@ -102,9 +101,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showError(message) {
         errorMessage.textContent = message;
+        errorMessage.style.display = 'block';
     }
 
     function clearError() {
+        errorMessage.style.display = 'none';
         errorMessage.textContent = '';
     }
 
